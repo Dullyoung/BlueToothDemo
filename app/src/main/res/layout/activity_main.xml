@@ -13,6 +13,13 @@
         app:layout_constraintBottom_toTopOf="@id/ll_btn"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_chat"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/ll_btn"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/ll_btn"
         android:layout_width="match_parent"
@@ -26,6 +33,18 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="扫描" />
+
+        <EditText
+            android:id="@+id/et_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="@integer/material_motion_duration_long_1" />
+
+        <Button
+            android:id="@+id/btn_send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="发送" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

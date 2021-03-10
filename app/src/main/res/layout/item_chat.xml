@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <com.coorchice.library.SuperTextView
+        android:id="@+id/tv_name"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:autoSizeMaxTextSize="15sp"
+        android:autoSizeTextType="uniform"
+        android:gravity="center"
+        android:textColor="@color/black"
+        app:stv_corner="40dp"
+        app:stv_stroke_color="@color/colorAccent"
+        app:stv_stroke_width="1dp"
+        tools:targetApi="o" />
+
+    <TextView
+        android:id="@+id/tv_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/black"
+        android:textSize="15sp" />
+
+    <com.coorchice.library.SuperTextView
+        android:id="@+id/tv_name2"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:autoSizeMaxTextSize="15sp"
+        android:autoSizeTextType="uniform"
+        android:gravity="center"
+        android:textColor="@color/black"
+        app:stv_corner="40dp"
+        app:stv_stroke_color="@color/colorAccent"
+        app:stv_stroke_width="1dp"
+        tools:targetApi="o" />
+</LinearLayout>

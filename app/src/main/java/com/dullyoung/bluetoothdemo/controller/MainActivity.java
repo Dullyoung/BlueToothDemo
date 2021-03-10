@@ -3,28 +3,36 @@ package com.dullyoung.bluetoothdemo.controller;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanResult;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.CpuUsageInfo;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.dullyoung.bluetoothdemo.R;
+import com.dullyoung.bluetoothdemo.model.MsgInfo;
 import com.dullyoung.bluetoothdemo.utils.CommonUtils;
 import com.dullyoung.bluetoothdemo.utils.PermissionHelper;
+import com.dullyoung.bluetoothdemo.utils.ToastCompat;
 import com.dullyoung.bluetoothdemo.view.adapter.BTAdapter;
+import com.dullyoung.bluetoothdemo.view.adapter.ChatAdapter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.UUID;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -37,6 +45,14 @@ public class MainActivity extends BaseActivity {
     RecyclerView mRvList;
     @BindView(R.id.btn_search)
     Button mBtnSearch;
+    @BindView(R.id.et_input)
+    EditText mEtInput;
+    @BindView(R.id.btn_send)
+    Button mBtnSend;
+    @BindView(R.id.ll_btn)
+    LinearLayout mLlBtn;
+    @BindView(R.id.rv_chat)
+    RecyclerView mRvChat;
 
     @Override
     protected int getLayoutId() {
@@ -44,14 +60,28 @@ public class MainActivity extends BaseActivity {
     }
 
     private BTAdapter mBTAdapter;
+    private ChatAdapter mChatAdapter;
+    private ReadThread mReadThread;
 
     @Override
     protected void initViews() {
         setRvList();
+        setRvChat();
         // Register for broadcasts when a device is discovered.
+        adapter = BluetoothAdapter.getDefaultAdapter();
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(receiver, filter);
+        new AcceptThread().start();
+        mReadThread = new ReadThread();
     }
+
+    private void setRvChat() {
+        mChatAdapter = new ChatAdapter(null);
+        mRvChat.setAdapter(mChatAdapter);
+        mRvChat.setLayoutManager(new LinearLayoutManager(getContext()));
+        mRvChat.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
+    }
+
 
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -82,43 +112,180 @@ public class MainActivity extends BaseActivity {
             adapter.cancelDiscovery();
         }
         unregisterReceiver(receiver);
+
     }
+
+    public static final String UUID_STRING = "1f-20-38-72-84";
+
+    ConnectThread mConnectThread;
 
     private void setRvList() {
         mBTAdapter = new BTAdapter(null);
         mRvList.setAdapter(mBTAdapter);
         mRvList.setLayoutManager(new LinearLayoutManager(getContext()));
+        mBTAdapter.setOnItemClickListener((adapter1, view, position) -> {
+            BluetoothDevice device = mBTAdapter.getData().get(position);
+            mRvList.setVisibility(View.INVISIBLE);
+            mRvChat.setVisibility(View.VISIBLE);
+            if (mConnectThread == null) {
+                mConnectThread = new ConnectThread(device);
+                mConnectThread.start();
+            }
+        });
+        mRvList.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
     }
 
     public static String TAG = "aaaa";
+    public final int REQUEST_ENABLE_BT = 123;
     BluetoothAdapter adapter;
 
+
     private void scanBt() {
-        getPermissionHelper().setMustPermissions2(Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        mRvList.setVisibility(View.VISIBLE);
+        mRvChat.setVisibility(View.INVISIBLE);
+
+        if (adapter.isDiscovering()) {
+            return;
+        }
+        getPermissionHelper().setMustPermissions2(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
         getPermissionHelper().checkAndRequestPermission(this, new PermissionHelper.OnRequestPermissionsCallback() {
             @Override
             public void onRequestPermissionSuccess() {
-                if (CommonUtils.isBlueToothEnable(getContext()) && CommonUtils.openBlueTooth(getContext())) {
-                    adapter = BluetoothAdapter.getDefaultAdapter();
-                    adapter.startDiscovery();
-                    Set<BluetoothDevice> set = adapter.getBondedDevices();
-                    List<BluetoothDevice> list = new ArrayList<>(set);
-                    mBTAdapter.setNewInstance(list);
+                if (CommonUtils.isBlueToothSupport(getContext())) {
+                    if (adapter.isEnabled()) {
+                        adapter = BluetoothAdapter.getDefaultAdapter();
+                        adapter.startDiscovery();//开始扫描
+                    } else {
+                        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                    }
                 }
             }
 
             @Override
             public void onRequestPermissionError() {
-
+                ToastCompat.show(getContext(), "蓝牙开启失败");
             }
         });
 
     }
 
-
-    @OnClick(R.id.btn_search)
-    public void onViewClicked() {
-        scanBt();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_ENABLE_BT) {
+            scanBt();
+        }
     }
+
+
+    @OnClick({R.id.btn_search, R.id.btn_send})
+    public void onViewClicked(View view) {
+        switch (view.getId()) {
+            case R.id.btn_search:
+                scanBt();
+                break;
+            case R.id.btn_send:
+                if (mSocket != null) {
+                    try {
+                        OutputStream outputStream = mSocket.getOutputStream();
+                        outputStream.write(mEtInput.getText().toString().getBytes());
+                        runOnUiThread(() -> {
+                            mChatAdapter.addData(new MsgInfo("我", mEtInput.getText().toString(), true));
+                            mChatAdapter.notifyItemInserted(mChatAdapter.getData().size());
+                            mRvChat.smoothScrollToPosition(mChatAdapter.getData().size());
+                            mEtInput.setText("");
+                        });
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        Log.i(TAG, "mSocket: IOException:" + e);
+                    }
+                } else {
+                    Log.i(TAG, "mmSocket == null ");
+                    ToastCompat.show(getContext(), "请先扫描建立链接");
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    private class ConnectThread extends Thread {
+
+        BluetoothDevice mDevice;
+
+        public ConnectThread(BluetoothDevice device) {
+            mDevice = device;
+        }
+
+        @Override
+        public void run() {
+            adapter.cancelDiscovery();
+            try {
+                targetName = mDevice.getName();
+                mSocket = mDevice.createRfcommSocketToServiceRecord(UUID.fromString(UUID_STRING));
+                mSocket.connect();
+                mReadThread = new ReadThread();
+                mReadThread.start();
+            } catch (IOException e) {
+                Log.e(TAG, "Socket's create() method failed", e);
+            }
+        }
+
+    }
+
+    BluetoothSocket mSocket;
+
+    private class AcceptThread extends Thread {
+        public AcceptThread() {
+        }
+
+        @Override
+        public void run() {
+            try {
+                BluetoothServerSocket tmp = null;
+                tmp = adapter.listenUsingRfcommWithServiceRecord("BTCommunication", UUID.fromString(UUID_STRING));
+                mSocket = tmp.accept();
+                mReadThread = new ReadThread();
+                mReadThread.start();
+            } catch (IOException e) {
+                Log.i(TAG, "Socket's listen() method failed", e);
+            }
+        }
+    }
+
+    private class ReadThread extends Thread {
+        byte[] buffer = new byte[1024];
+        int bytes;
+        InputStream mmInStream = null;
+
+        @Override
+        public void run() {
+            try {
+                mmInStream = mSocket.getInputStream();
+                while ((bytes = mmInStream.read(buffer)) > 0) {
+                    byte[] buf_data = new byte[bytes];
+                    System.arraycopy(buffer, 0, buf_data, 0, bytes);
+                    Log.i(TAG, "ReadThread: " + new String(buf_data));
+                    runOnUiThread(() -> {
+                        mChatAdapter.addData(new MsgInfo(targetName, new String(buf_data), false));
+                        mChatAdapter.notifyItemInserted(mChatAdapter.getData().size());
+                        mRvChat.smoothScrollToPosition(mChatAdapter.getData().size());
+                    });
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private String targetName = "对方";
 }
