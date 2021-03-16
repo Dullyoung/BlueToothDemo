@@ -78,6 +78,19 @@ public class MainActivity extends BaseActivity {
      */
     private ReadThread mReadThread;
 
+    /**
+     * 非标准UUID ,标准应为：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (8-4-4-4-12)
+     * 其中每个 x 是 0-9 或 a-f 范围内的一个十六进制的数字。
+     */
+    public static final String UUID_STRING = "1f-20-38-72-84";
+
+    private ConnectThread mConnectThread;
+    public static String TAG = "aaaa";
+    public final int REQUEST_ENABLE_BT = 123;
+    private BluetoothAdapter adapter;
+    private BluetoothSocket mSocket;
+    private String targetName = "对方";
+
     @Override
     protected void initViews() {
         setRvList();
@@ -127,13 +140,17 @@ public class MainActivity extends BaseActivity {
         if (adapter != null && adapter.isDiscovering()) {
             adapter.cancelDiscovery();
         }
+        if (mSocket!=null){
+            try {
+                mSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         unregisterReceiver(receiver);
 
     }
 
-    public static final String UUID_STRING = "1f-20-38-72-84";
-
-    ConnectThread mConnectThread;
 
     private void setRvList() {
         mBTAdapter = new BTAdapter(null);
@@ -143,17 +160,11 @@ public class MainActivity extends BaseActivity {
             BluetoothDevice device = mBTAdapter.getData().get(position);
             mRvList.setVisibility(View.INVISIBLE);
             mRvChat.setVisibility(View.VISIBLE);
-            if (mConnectThread == null) {
-                mConnectThread = new ConnectThread(device);
-                mConnectThread.start();
-            }
+            mConnectThread = new ConnectThread(device);
+            mConnectThread.start();
         });
         mRvList.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
     }
-
-    public static String TAG = "aaaa";
-    public final int REQUEST_ENABLE_BT = 123;
-    private BluetoothAdapter adapter;
 
 
     /**
@@ -214,27 +225,34 @@ public class MainActivity extends BaseActivity {
                 scanBt();
                 break;
             case R.id.btn_send:
-                if (mSocket != null) {
-                    try {
-                        OutputStream outputStream = mSocket.getOutputStream();
-                        outputStream.write(mEtInput.getText().toString().getBytes());
-                        runOnUiThread(() -> {
-                            mChatAdapter.addData(new MsgInfo("我", mEtInput.getText().toString(), true));
-                            mChatAdapter.notifyItemInserted(mChatAdapter.getData().size());
-                            mRvChat.smoothScrollToPosition(mChatAdapter.getData().size());
-                            mEtInput.setText("");
-                        });
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        Log.i(TAG, "mSocket: IOException:" + e);
-                    }
-                } else {
-                    Log.i(TAG, "mmSocket == null ");
-                    ToastCompat.show(getContext(), "请先扫描建立链接");
-                }
+                send();
                 break;
             default:
                 break;
+        }
+    }
+
+    /**
+     * 通过socket 获取OutputStream 发送信息
+     */
+    private void send() {
+        if (mSocket != null) {
+            try {
+                OutputStream outputStream = mSocket.getOutputStream();
+                outputStream.write(mEtInput.getText().toString().getBytes());
+                runOnUiThread(() -> {
+                    mChatAdapter.addData(new MsgInfo("我", mEtInput.getText().toString(), true));
+                    mChatAdapter.notifyItemInserted(mChatAdapter.getData().size());
+                    mRvChat.smoothScrollToPosition(mChatAdapter.getData().size());
+                    mEtInput.setText("");
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i(TAG, "mSocket: IOException:" + e);
+            }
+        } else {
+            Log.i(TAG, "mmSocket == null ");
+            ToastCompat.show(getContext(), "请先扫描建立链接");
         }
     }
 
@@ -256,6 +274,10 @@ public class MainActivity extends BaseActivity {
             mDevice = device;
         }
 
+        public void setDevice(BluetoothDevice device) {
+            mDevice = device;
+        }
+
         @Override
         public void run() {
             adapter.cancelDiscovery();
@@ -271,8 +293,6 @@ public class MainActivity extends BaseActivity {
         }
 
     }
-
-    private BluetoothSocket mSocket;
 
     /**
      * 服务线程 通过{@link BluetoothAdapter#listenUsingInsecureRfcommWithServiceRecord(String, UUID)}
@@ -330,5 +350,4 @@ public class MainActivity extends BaseActivity {
     /**
      * 聊天对方的名字 默认 对方 在链接的时候以蓝牙设备名为准
      */
-    private String targetName = "对方";
 }
