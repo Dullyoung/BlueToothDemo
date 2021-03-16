@@ -39,12 +39,12 @@ public class SplashActivity extends BaseActivity {
     public void onViewClicked(View view) {
         switch (view.getId()) {
             case R.id.stv_server:
-                startActivity(new Intent(this, ServerActivity.class));
-                finish();
+//                startActivity(new Intent(this, ServerActivity.class));
+//                finish();
                 break;
             case R.id.stv_user:
-                startActivity(new Intent(this, UserActivity.class));
-                finish();
+//                startActivity(new Intent(this, UserActivity.class));
+//                finish();
                 break;
             case R.id.stv_link:
                 startActivity(new Intent(this, MainActivity.class));

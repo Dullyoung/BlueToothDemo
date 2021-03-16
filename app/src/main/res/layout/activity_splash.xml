@@ -80,7 +80,7 @@
         android:layout_marginTop="300dp"
         android:layout_marginEnd="50dp"
         android:gravity="center"
-        android:text="仅配对"
+        android:text="蓝牙扫描聊天示例"
         android:textColor="@color/white"
         android:textSize="25dp"
         app:layout_constraintBottom_toBottomOf="parent"

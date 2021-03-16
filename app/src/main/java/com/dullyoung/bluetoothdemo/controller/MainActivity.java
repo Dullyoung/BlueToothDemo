@@ -32,12 +32,16 @@ import com.dullyoung.bluetoothdemo.view.adapter.ChatAdapter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.util.UUID;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
+/**
+ *
+ */
 public class MainActivity extends BaseActivity {
 
 
@@ -59,8 +63,19 @@ public class MainActivity extends BaseActivity {
         return R.layout.activity_main;
     }
 
+    /**
+     * 搜索到的蓝牙列表
+     */
     private BTAdapter mBTAdapter;
+
+    /**
+     * 聊天列表
+     */
     private ChatAdapter mChatAdapter;
+
+    /**
+     * 用来读取消息的线程
+     */
     private ReadThread mReadThread;
 
     @Override
@@ -71,6 +86,7 @@ public class MainActivity extends BaseActivity {
         adapter = BluetoothAdapter.getDefaultAdapter();
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(receiver, filter);
+        //开启服务线程
         new AcceptThread().start();
         mReadThread = new ReadThread();
     }
@@ -137,9 +153,13 @@ public class MainActivity extends BaseActivity {
 
     public static String TAG = "aaaa";
     public final int REQUEST_ENABLE_BT = 123;
-    BluetoothAdapter adapter;
+    private BluetoothAdapter adapter;
 
 
+    /**
+     * 扫描 同时设置聊天RV为不可见
+     * 蓝牙列表可见
+     */
     private void scanBt() {
 
         mRvList.setVisibility(View.VISIBLE);
@@ -153,6 +173,7 @@ public class MainActivity extends BaseActivity {
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.BLUETOOTH,
                 Manifest.permission.BLUETOOTH_ADMIN,
+                //起初设计是打算做个文件传输，后来发现与socket并无区别，懒得做了。以下两个权限可要可不要
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE);
         getPermissionHelper().checkAndRequestPermission(this, new PermissionHelper.OnRequestPermissionsCallback() {
@@ -218,9 +239,18 @@ public class MainActivity extends BaseActivity {
     }
 
 
+    /**
+     * 链接线程
+     * 通过{@link BluetoothDevice#createRfcommSocketToServiceRecord(UUID)}
+     * 获取socket
+     * 然后使用{@link BluetoothSocket#connect()}链接服务端
+     */
     private class ConnectThread extends Thread {
 
-        BluetoothDevice mDevice;
+        /**
+         * 要链接的设备信息，通过扫描或者本地已保存的设备信息获取
+         */
+        private BluetoothDevice mDevice;
 
         public ConnectThread(BluetoothDevice device) {
             mDevice = device;
@@ -242,8 +272,15 @@ public class MainActivity extends BaseActivity {
 
     }
 
-    BluetoothSocket mSocket;
+    private BluetoothSocket mSocket;
 
+    /**
+     * 服务线程 通过{@link BluetoothAdapter#listenUsingInsecureRfcommWithServiceRecord(String, UUID)}
+     * 生成一个{@link #mSocket}
+     * 然后调用{@link BluetoothServerSocket#accept()}
+     * 阻塞线程知道客户端连接 有客户端连接后才会执行后面
+     * {@code mReadThread = new ReadThread();}开启线程读取
+     */
     private class AcceptThread extends Thread {
         public AcceptThread() {
         }
@@ -262,6 +299,9 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    /**
+     * 通过获取{@link Socket#getInputStream()} 读取缓冲区数据
+     */
     private class ReadThread extends Thread {
         byte[] buffer = new byte[1024];
         int bytes;
@@ -272,11 +312,11 @@ public class MainActivity extends BaseActivity {
             try {
                 mmInStream = mSocket.getInputStream();
                 while ((bytes = mmInStream.read(buffer)) > 0) {
-                    byte[] buf_data = new byte[bytes];
-                    System.arraycopy(buffer, 0, buf_data, 0, bytes);
-                    Log.i(TAG, "ReadThread: " + new String(buf_data));
+                    byte[] bufData = new byte[bytes];
+                    System.arraycopy(buffer, 0, bufData, 0, bytes);
+                    Log.i(TAG, "ReadThread: " + new String(bufData));
                     runOnUiThread(() -> {
-                        mChatAdapter.addData(new MsgInfo(targetName, new String(buf_data), false));
+                        mChatAdapter.addData(new MsgInfo(targetName, new String(bufData), false));
                         mChatAdapter.notifyItemInserted(mChatAdapter.getData().size());
                         mRvChat.smoothScrollToPosition(mChatAdapter.getData().size());
                     });
@@ -287,5 +327,8 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    /**
+     * 聊天对方的名字 默认 对方 在链接的时候以蓝牙设备名为准
+     */
     private String targetName = "对方";
 }

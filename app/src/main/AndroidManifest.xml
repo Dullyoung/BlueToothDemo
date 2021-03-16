@@ -17,14 +17,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/baseTheme">
-        <activity android:name=".controller.MainActivity" />
-        <activity android:name=".controller.server.ServerActivity" />
-        <activity android:name=".controller.SplashActivity">
+        <activity android:name=".controller.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity android:name=".controller.server.ServerActivity" />
+        <activity android:name=".controller.SplashActivity">
         </activity>
         <activity android:name=".controller.user.UserActivity" />
 
