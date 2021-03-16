@@ -84,12 +84,17 @@ public class MainActivity extends BaseActivity {
      */
     public static final String UUID_STRING = "1f-20-38-72-84";
 
+    /**
+     * 聊天对方的名字 默认 对方 在链接的时候以蓝牙设备名为准
+     */
+    private String targetName = "对方";
+
     private ConnectThread mConnectThread;
     public static String TAG = "aaaa";
     public final int REQUEST_ENABLE_BT = 123;
     private BluetoothAdapter adapter;
     private BluetoothSocket mSocket;
-    private String targetName = "对方";
+
 
     @Override
     protected void initViews() {
@@ -140,7 +145,7 @@ public class MainActivity extends BaseActivity {
         if (adapter != null && adapter.isDiscovering()) {
             adapter.cancelDiscovery();
         }
-        if (mSocket!=null){
+        if (mSocket != null) {
             try {
                 mSocket.close();
             } catch (IOException e) {
@@ -347,7 +352,5 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 聊天对方的名字 默认 对方 在链接的时候以蓝牙设备名为准
-     */
+
 }
