@@ -6,8 +6,6 @@ import android.view.Window;
 import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
 
 import com.dullyoung.bluetoothdemo.model.EventStub;
 import com.dullyoung.bluetoothdemo.utils.PermissionHelper;
@@ -18,6 +16,10 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import butterknife.ButterKnife;
 
+/**
+ *
+ * @author Dullyoung
+ */
 public abstract class BaseActivity extends AppCompatActivity   {
 
     protected PermissionHelper mPermissionHelper;
