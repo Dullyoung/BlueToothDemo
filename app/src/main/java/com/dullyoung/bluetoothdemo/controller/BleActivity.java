@@ -133,6 +133,8 @@ public class BleActivity extends BaseActivity {
         mRvList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
         mBleAdapter.setOnItemClickListener((adapter, view, position) -> {
             ScanResult scanResult = mBleAdapter.getData().get(position);
+            //这里是用设备原生的UUID去链接，所以如果之前配对过，就会连接上了找不到读写服务
+            // 因为之前的扫描建立的服务器是自己自定义的UUID
             mBluetoothGatt = scanResult.getDevice().connectGatt(getContext(), false, new MGattCallBack());
         });
 
@@ -289,6 +291,12 @@ public class BleActivity extends BaseActivity {
         }
         BluetoothGattService service = null;
         if (mBluetoothGatt == null) {
+
+            /**
+             * 这里是处理已配对设备自动连接。处理的不够完善
+             * {@link BluetoothDevice#connectGatt(Context, boolean, BluetoothGattCallback)}这个方法是异步的
+             * 而我这里的处理是同步的。。。所以可能要点两次才能获取到正确的GATT
+             */
             Set<BluetoothDevice> devices = mBluetoothAdapter.getBondedDevices();
             for (BluetoothDevice device : devices) {
                 mBluetoothGatt = device.connectGatt(getContext(), false, new MGattCallBack());
@@ -303,6 +311,7 @@ public class BleActivity extends BaseActivity {
         } else {
             service = mBluetoothGatt.getService(UUID_SERVER);
         }
+
 
         if (service == null) {
             ToastCompat.show(getContext(), "服务端未找到");
